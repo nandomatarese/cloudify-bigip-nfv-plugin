@@ -4,6 +4,7 @@
 plugins:
     bigip:
         executor: central_deployment_agent
+        package_name: cloudify-bigip-plugin
         source: https://github.com/nandomatarese/cloudify-bigip-nfv-plugin/archive/master.zip
 
 relationships:
