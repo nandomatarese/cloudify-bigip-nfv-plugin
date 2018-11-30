@@ -1,0 +1,64 @@
+tosca_definitions_version: cloudify_dsl_1_0
+
+imports:
+    - http://www.getcloudify.org/spec/cloudify/3.1/types.yaml
+    - plugin.yaml
+
+inputs:
+    host: {}
+    username: {}
+    password: {}
+    pool_id: {}
+    lb_method:
+        default: LB_METHOD_ROUND_ROBIN
+    port: {}
+
+node_types:
+    mock_virtual_ip:
+        derived_from: cloudify.nodes.VirtualIP
+        properties:
+            mock_address:
+                description: hostname / IP address
+                type: string
+
+node_templates:
+    pool:
+        type: cloudify.bigip.nodes.Pool
+        properties:
+            host: { get_input: host }
+            username: { get_input: username }
+            password: { get_input: password }
+            pool_id: { get_input: pool_id }
+            lb_method: { get_input: lb_method }
+        relationships:
+          - type: cloudify.bigip.pool_to_endpoint
+            target: virtual_ip
+            source_interfaces:
+                cloudify.interfaces.relationship_lifecycle:
+                    establish:
+                        inputs:
+                            address: { get_property: [virtual_ip, mock_address] }
+                            port: { get_input: port }
+                    unlink:
+                        inputs:
+                            address: { get_property: [virtual_ip, mock_address] }
+                            port: { get_input: port }
+          - type: cloudify.bigip.pool_to_application
+            target: application
+
+    application:
+        type: cloudify.nodes.Root
+        relationships:
+          - type: cloudify.relationships.contained_in
+            target: compute
+
+    compute:
+        type: cloudify.nodes.Root
+        relationships:
+          - type: cloudify.relationships.depends_on
+            target: virtual_ip
+
+    virtual_ip:
+        type: mock_virtual_ip
+        properties:
+            mock_address: 192.168.0.1
